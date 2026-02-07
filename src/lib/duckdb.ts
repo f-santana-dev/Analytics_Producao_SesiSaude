@@ -4,18 +4,16 @@ import mvp_worker from '@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?ur
 import duckdb_eh from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url';
 import eh_worker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url';
 
-const MANUAL_BUNDLES: duckdb.DuckDBBundle[] = [
-    {
-        mvp: {
-            mainModule: duckdb_wasm,
-            mainWorker: mvp_worker,
-        },
-        eh: {
-            mainModule: duckdb_eh,
-            mainWorker: eh_worker,
-        },
+const MANUAL_BUNDLES: duckdb.DuckDBBundles = {
+    mvp: {
+        mainModule: duckdb_wasm,
+        mainWorker: mvp_worker,
     },
-];
+    eh: {
+        mainModule: duckdb_eh,
+        mainWorker: eh_worker,
+    },
+};
 
 let dbInstance: duckdb.AsyncDuckDB | null = null;
 
@@ -23,13 +21,13 @@ export const initDuckDB = async () => {
     if (dbInstance) return dbInstance;
 
     // Hardcode bundle selection to MVP to avoid selection issues
-    const bundle = MANUAL_BUNDLES[0];
+    const bundle = MANUAL_BUNDLES.mvp;
     
     // Instantiate the asynchronus version of DuckDB-wasm
-    const worker = new Worker(bundle.mvp.mainWorker);
+    const worker = new Worker(bundle.mainWorker);
     const logger = new duckdb.ConsoleLogger();
     const db = new duckdb.AsyncDuckDB(logger, worker);
-    await db.instantiate(bundle.mvp.mainModule, bundle.mvp.pthreadWorker);
+    await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
 
     // Register Parquet file
     const res = await fetch('/dados_producao.parquet');

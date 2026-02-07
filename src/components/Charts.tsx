@@ -430,7 +430,7 @@ export function TopSubAreasChart({ data, onBarClick }: TopSubAreasChartProps) {
 
 // --- Backlog Aging Chart ---
 interface BacklogAgingChartProps {
-  data: { name: string; value: number }[];
+  data: { name: string; value: number; quantidade: number }[];
 }
 
 export function BacklogAgingChart({ data }: BacklogAgingChartProps) {

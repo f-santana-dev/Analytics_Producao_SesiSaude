@@ -33,6 +33,16 @@ export function Sidebar({
 
   return (
     <div className="w-56 bg-sidebar border-r border-border h-screen overflow-y-auto p-3 flex flex-col gap-3 fixed left-0 top-0 z-20 scrollbar-thin scrollbar-thumb-border">
+      <div className="shrink-0 flex items-center gap-3 text-[#F39C45] pb-2 border-b border-border">
+        <div className="p-2 bg-[#F39C45]/10 rounded-lg border border-[#F39C45]/20">
+          <img src="/favicon_page.svg" alt="" className="w-6 h-6" />
+        </div>
+        <div>
+          <div className="text-sm font-bold tracking-tight text-white leading-none">Gestão de Produção</div>
+          <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Analytics Pro</div>
+        </div>
+      </div>
+
       <div className="flex items-center gap-2 mb-1">
         <Filter className="w-4 h-4 text-primary" />
         <h2 className="text-base font-bold text-white">Filtros</h2>

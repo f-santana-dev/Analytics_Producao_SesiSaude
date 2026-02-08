@@ -677,21 +677,20 @@ function App() {
       {/* Main Content */}
       <div className="flex-1 ml-56 p-4 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <div className="flex justify-between items-center mb-3 shrink-0">
-          <div className="shrink-0 flex items-center gap-3 text-[#F39C45]">
-            <div className="p-2 bg-[#F39C45]/10 rounded-lg border border-[#F39C45]/20">
-              <img src="/favicon_page.svg" alt="" className="w-6 h-6" />
+        <div className="flex justify-between items-center mb-3 shrink-0 border-b border-border pb-2">
+          <div>
+            <h1 className="text-2xl font-bold text-white leading-tight">Visão Geral</h1>
+            <div className="flex items-center gap-2 text-secondary text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span>
+                Período de {selectedMonth ? selectedMonth : "Todos os meses"} {selectedYears.length > 0 ? selectedYears.join(", ") : "Todos os anos"}
+              </span>
             </div>
-            <div>
-            <h1 className="text-2xl font-bold text-white leading-tight">Análise de Produção</h1>
-            <p className="text-secondary text-xs">Visão Geral de Produção</p>
-          </div>
           </div>
           <div className="text-right">
              <div className="text-secondary text-[10px]">Dados atualizados em: {new Date().toLocaleDateString()}</div>
-             <div className="flex items-center justify-end gap-1.5 mt-1">
-                <span className="text-white text-sm font-bold">FS</span>
-                <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-black text-xs font-bold">FS</div>
+             <div className="flex items-center justify-end mt-1">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold border border-white/20 bg-white/10 backdrop-blur-sm shadow-sm">FS</div>
              </div>
           </div>
         </div>

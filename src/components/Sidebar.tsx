@@ -17,6 +17,16 @@ interface SidebarProps {
   specialties: string[];
   selectedSpecialties: string[];
   onSpecialtiesChange: (specialties: string[]) => void;
+  compareMode: boolean;
+  onCompareModeChange: (value: boolean) => void;
+  compareYearA: number | null;
+  compareYearB: number | null;
+  onCompareYearAChange: (value: number) => void;
+  onCompareYearBChange: (value: number) => void;
+  compareMonthA: string;
+  compareMonthB: string;
+  onCompareMonthAChange: (value: string) => void;
+  onCompareMonthBChange: (value: string) => void;
 }
 
 export function Sidebar({
@@ -24,7 +34,17 @@ export function Sidebar({
   months, selectedMonth, onMonthChange,
   units, selectedUnits, onUnitsChange,
   subUnits, selectedSubUnits, onSubUnitsChange,
-  specialties, selectedSpecialties, onSpecialtiesChange
+  specialties, selectedSpecialties, onSpecialtiesChange,
+  compareMode,
+  onCompareModeChange,
+  compareYearA,
+  compareYearB,
+  onCompareYearAChange,
+  onCompareYearBChange,
+  compareMonthA,
+  compareMonthB,
+  onCompareMonthAChange,
+  onCompareMonthBChange
 }: SidebarProps) {
 
   const removeSelection = (item: string | number, current: any[], onChange: (items: any[]) => void) => {
@@ -32,7 +52,7 @@ export function Sidebar({
   }
 
   return (
-    <div className="w-56 bg-sidebar border-r border-border h-screen overflow-y-auto p-3 flex flex-col gap-3 fixed left-0 top-0 z-20 scrollbar-thin scrollbar-thumb-border">
+    <div className="w-56 bg-sidebar border-r border-border h-screen overflow-y-auto overflow-x-hidden p-3 flex flex-col gap-3 fixed left-0 top-0 z-20 scrollbar-thin scrollbar-thumb-border">
       <div className="shrink-0 flex items-center gap-3 text-[#F39C45] pb-2 border-b border-border">
         <div className="p-2 bg-[#F39C45]/10 rounded-lg border border-[#F39C45]/20">
           <img src="/favicon_page.svg" alt="" className="w-6 h-6" />
@@ -48,47 +68,116 @@ export function Sidebar({
         <h2 className="text-base font-bold text-white">Filtros</h2>
       </div>
 
-      {/* Ano (Multiselect) */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs text-secondary">Ano</label>
-        <div className="flex flex-wrap gap-1 mb-1">
-          {selectedYears.map(y => (
-            <span key={y} className="bg-primary text-black font-bold text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
-              {y}
-              <X className="w-3 h-3 cursor-pointer" onClick={() => removeSelection(y, selectedYears, onYearsChange)} />
+      <div className="flex flex-col gap-2 border-b border-border pb-2">
+        <label className="text-xs text-secondary">Modo comparacao</label>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onCompareModeChange(!compareMode)}
+            className={`text-[10px] px-2 py-1 rounded-full border ${compareMode ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-card text-secondary border-border'}`}
+          >
+            {compareMode ? 'Comparar meses' : 'Desativado'}
+          </button>
+          {compareMode && (
+            <span className="text-[10px] text-secondary tooltip" data-tooltip="A comparacao e limitada a 2 meses para manter a leitura clara.">
+              Limite 2 meses
             </span>
-          ))}
+          )}
         </div>
-        <select 
-          className="select-dark bg-card border border-border rounded p-1.5 text-xs text-white outline-none focus:border-primary w-full"
-          onChange={(e) => {
-              const val = Number(e.target.value);
-              if (val && !selectedYears.includes(val)) {
-                  onYearsChange([...selectedYears, val]);
-              }
-              e.target.value = "";
-          }}
-        >
-          <option value="">Adicionar ano...</option>
-          {years.filter(y => !selectedYears.includes(y)).map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-        {selectedYears.length === 0 && (
-            <span className="text-[10px] text-secondary italic">Exibindo todos os anos</span>
-        )}
       </div>
 
-      {/* Mês */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs text-secondary">Mês</label>
-        <select 
-          className="select-dark bg-card border border-border rounded p-1.5 text-xs text-white outline-none focus:border-primary w-full"
-          value={selectedMonth}
-          onChange={(e) => onMonthChange(e.target.value)}
-        >
-          <option value="">Todos os Meses</option>
-          {months.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
-      </div>
+      {compareMode ? (
+        <>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-secondary">Ano A</label>
+            <select
+              className="select-dark bg-card border border-border rounded p-1.5 text-xs text-white outline-none focus:border-primary w-full"
+              value={compareYearA ?? ''}
+              onChange={(e) => onCompareYearAChange(Number(e.target.value))}
+            >
+              <option value="">Selecione...</option>
+              {years.map(y => <option key={`a-${y}`} value={y}>{y}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-secondary">Mes A</label>
+            <select
+              className="select-dark bg-card border border-border rounded p-1.5 text-xs text-white outline-none focus:border-primary w-full"
+              value={compareMonthA}
+              onChange={(e) => onCompareMonthAChange(e.target.value)}
+            >
+              <option value="">Selecione...</option>
+              {months.map(m => <option key={`ma-${m}`} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-secondary">Ano B</label>
+            <select
+              className="select-dark bg-card border border-border rounded p-1.5 text-xs text-white outline-none focus:border-primary w-full"
+              value={compareYearB ?? ''}
+              onChange={(e) => onCompareYearBChange(Number(e.target.value))}
+            >
+              <option value="">Selecione...</option>
+              {years.map(y => <option key={`b-${y}`} value={y}>{y}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-secondary">Mes B</label>
+            <select
+              className="select-dark bg-card border border-border rounded p-1.5 text-xs text-white outline-none focus:border-primary w-full"
+              value={compareMonthB}
+              onChange={(e) => onCompareMonthBChange(e.target.value)}
+            >
+              <option value="">Selecione...</option>
+              {months.map(m => <option key={`mb-${m}`} value={m}>{m}</option>)}
+            </select>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Ano (Multiselect) */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-secondary">Ano</label>
+            <div className="flex flex-wrap gap-1 mb-1">
+              {selectedYears.map(y => (
+                <span key={y} className="bg-primary text-black font-bold text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                  {y}
+                  <X className="w-3 h-3 cursor-pointer" onClick={() => removeSelection(y, selectedYears, onYearsChange)} />
+                </span>
+              ))}
+            </div>
+            <select 
+              className="select-dark bg-card border border-border rounded p-1.5 text-xs text-white outline-none focus:border-primary w-full"
+              onChange={(e) => {
+                  const val = Number(e.target.value);
+                  if (val && !selectedYears.includes(val)) {
+                      onYearsChange([...selectedYears, val]);
+                  }
+                  e.target.value = "";
+              }}
+            >
+              <option value="">Adicionar ano...</option>
+              {years.filter(y => !selectedYears.includes(y)).map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            {selectedYears.length === 0 && (
+                <span className="text-[10px] text-secondary italic">Exibindo todos os anos</span>
+            )}
+          </div>
+
+          {/* Mes */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-secondary">Mes</label>
+            <select 
+              className="select-dark bg-card border border-border rounded p-1.5 text-xs text-white outline-none focus:border-primary w-full"
+              value={selectedMonth}
+              onChange={(e) => onMonthChange(e.target.value)}
+            >
+              <option value="">Todos os Meses</option>
+              {months.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+        </>
+      )}
 
       {/* Unidade */}
       <div className="flex flex-col gap-1">

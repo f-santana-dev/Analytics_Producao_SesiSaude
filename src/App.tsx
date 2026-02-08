@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { initDuckDB } from './lib/duckdb';
 import { Sidebar } from './components/Sidebar';
 import { KPICard } from './components/KPICard';
-import { CategoryChart, DailyRealizedChart, TopSubAreasChart, MonthlyRealizedChart, BacklogAgingChart, AvgLeadTimeSubAreaChart, TypeBarChart } from './components/Charts';
+import ExcelJS from 'exceljs';
+import { Download } from 'lucide-react';
+import { CategoryChart, DailyRealizedChart, TopSubAreasChart, MonthlyRealizedChart, BacklogAgingChart, AvgLeadTimeSubAreaChart, TypeBarChart, CompareDailyChart, CompareMonthlyChart } from './components/Charts';
 
 interface DashboardData {
   totalFaturamento: number;
@@ -30,8 +32,10 @@ interface DashboardData {
   trendTempoMedioRealizacao: number | null;
   trendReceitaFlutuante: number | null;
 
-  dailyRealizedData: { day: number; volume: number }[];
-  monthlyRealizedData: { name: string; value: number }[];
+  dailyRealizedData: { day: number; volume: number; valor: number }[];
+  monthlyRealizedData: { name: string; value: number; valor: number }[];
+  compareDailyData: { day: number; a: number; b: number; aValor: number; bValor: number }[];
+  compareMonthlyData: { name: string; value: number; valor: number; color: string }[];
   categoryData: { name: string; quantidade: number; valor: number }[];
   serviceTypeData: { name: string; quantidade: number; valor: number }[];
   atendTypeData: { name: string; quantidade: number; valor: number }[];
@@ -75,6 +79,8 @@ function App() {
 
     dailyRealizedData: [],
     monthlyRealizedData: [],
+    compareDailyData: [],
+    compareMonthlyData: [],
     categoryData: [],
     serviceTypeData: [],
     atendTypeData: [],
@@ -97,6 +103,11 @@ function App() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedAtendTypes, setSelectedAtendTypes] = useState<string[]>([]);
   const [selectedServiceTypes, setSelectedServiceTypes] = useState<string[]>([]);
+  const [compareMode, setCompareMode] = useState<boolean>(false);
+  const [compareYearA, setCompareYearA] = useState<number | null>(null);
+  const [compareYearB, setCompareYearB] = useState<number | null>(null);
+  const [compareMonthA, setCompareMonthA] = useState<string>('');
+  const [compareMonthB, setCompareMonthB] = useState<string>('');
 
   const formatCurrency = (val: number | undefined | null) => {
       return `R$ ${(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -110,6 +121,176 @@ function App() {
       return `${(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
   };
 
+  const compareLabelA = compareYearA && compareMonthA ? `${compareMonthA} ${compareYearA}` : 'Mes A';
+  const compareLabelB = compareYearB && compareMonthB ? `${compareMonthB} ${compareYearB}` : 'Mes B';
+
+
+  const makeFilename = (base: string) => {
+    const stamp = new Date().toISOString().slice(0, 10);
+    return `${base}_${stamp}.xlsx`;
+  };
+
+  const getLogoBase64 = async () => {
+    try {
+      const response = await fetch('/logo.png');
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('logo read failed'));
+        reader.readAsDataURL(blob);
+      });
+      return dataUrl.split(',')[1];
+    } catch {
+      return null;
+    }
+  };
+
+  const exportWorkbook = async (sheets: { name: string; title: string; rows: Record<string, any>[] }[], filename: string) => {
+    const wb = new ExcelJS.Workbook();
+    const logoBase64 = await getLogoBase64();
+
+    const filtrosResumo = [
+      compareMode ? `Comparacao: ${compareLabelA} x ${compareLabelB}` : `Periodo: ${selectedMonth || 'Todos os meses'} ${selectedYears.length ? selectedYears.join(', ') : 'Todos os anos'}`,
+      selectedUnits.length ? `Unidades: ${selectedUnits.join(', ')}` : 'Unidades: Todas',
+      selectedSubUnits.length ? `Subareas: ${selectedSubUnits.join(', ')}` : 'Subareas: Todas',
+      selectedSpecialties.length ? `Especialidades: ${selectedSpecialties.join(', ')}` : 'Especialidades: Todas',
+      selectedCategories.length ? `Categorias: ${selectedCategories.join(', ')}` : 'Categorias: Todas',
+      selectedAtendTypes.length ? `Tipos Atendimento: ${selectedAtendTypes.join(', ')}` : 'Tipos Atendimento: Todos',
+      selectedServiceTypes.length ? `Tipos Servico: ${selectedServiceTypes.join(', ')}` : 'Tipos Servico: Todos',
+    ].join(' | ');
+
+    sheets.forEach((sheet) => {
+      const ws = wb.addWorksheet(sheet.name);
+      const headers = sheet.rows.length ? Object.keys(sheet.rows[0]) : [];
+      const totalCols = Math.max(headers.length, 6);
+
+      if (logoBase64) {
+        const imageId = wb.addImage({ base64: logoBase64, extension: 'png' });
+        ws.addImage(imageId, {
+          tl: { col: 0, row: 0 },
+          ext: { width: 180, height: 90 },
+        });
+      }
+
+      ws.mergeCells(1, 3, 1, totalCols);
+      ws.getCell(1, 3).value = sheet.title;
+      ws.getCell(1, 3).font = { bold: true, size: 14 };
+
+      ws.mergeCells(2, 3, 2, totalCols);
+      ws.getCell(2, 3).value = `Data: ${new Date().toLocaleDateString()}`;
+      ws.getCell(2, 3).font = { size: 10, color: { argb: 'FF6B7280' } };
+
+      ws.mergeCells(3, 3, 3, totalCols);
+      ws.getCell(3, 3).value = filtrosResumo;
+      ws.getCell(3, 3).font = { size: 9, color: { argb: 'FF6B7280' } };
+
+      if (headers.length) {
+        ws.getRow(5).values = [null, ...headers];
+        ws.getRow(5).font = { bold: true };
+      }
+
+      sheet.rows.forEach((row, index) => {
+        const rowValues = headers.map((h) => row[h]);
+        ws.getRow(6 + index).values = [null, ...rowValues];
+      });
+
+      ws.columns = headers.map((h) => ({ key: h, width: Math.max(12, h.length + 4) }));
+    });
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportSingle = async (name: string, title: string, rows: Record<string, any>[]) => {
+    await exportWorkbook([{ name, title, rows }], makeFilename(name.replace(/\s+/g, '_')));
+  };
+
+  const exportAll = async () => {
+    const resumoRows = [
+      { Indicador: 'Total Confirmados', Valor: data.totalProcedimentos },
+      { Indicador: 'Valor Confirmado', Valor: data.totalFaturamento },
+      { Indicador: 'Total Realizados', Valor: data.totalRealizados },
+      { Indicador: 'Valor Realizado', Valor: data.valorRealizado },
+      { Indicador: 'Taxa Realizacao (Volume)', Valor: data.taxaRealizacaoVolume },
+      { Indicador: 'Taxa Realizacao (Valor)', Valor: data.taxaRealizacaoValor },
+      { Indicador: 'Empresas Atendidas', Valor: data.empresasAtendidas },
+      { Indicador: 'Pessoas Atendidas', Valor: data.pessoasAtendidas },
+      { Indicador: 'Ticket Medio', Valor: data.ticketMedio },
+      { Indicador: 'A Realizar', Valor: data.backlogTotalQuantidade },
+      { Indicador: 'Tempo Medio (Dias)', Valor: data.tempoMedioRealizacaoDias },
+      { Indicador: 'Backlog (Valor)', Valor: data.backlogTotalValor },
+    ];
+
+    const filtrosRows = [
+      { Filtro: 'Modo Comparacao', Valor: compareMode ? 'Ativo' : 'Desativado' },
+      { Filtro: 'Mes A', Valor: compareMode ? compareLabelA : '' },
+      { Filtro: 'Mes B', Valor: compareMode ? compareLabelB : '' },
+      { Filtro: 'Anos', Valor: compareMode ? '' : (selectedYears.length ? selectedYears.join(', ') : 'Todos') },
+      { Filtro: 'Mes', Valor: compareMode ? '' : (selectedMonth || 'Todos') },
+      { Filtro: 'Unidades', Valor: selectedUnits.length ? selectedUnits.join(', ') : 'Todas' },
+      { Filtro: 'Subareas', Valor: selectedSubUnits.length ? selectedSubUnits.join(', ') : 'Todas' },
+      { Filtro: 'Especialidades', Valor: selectedSpecialties.length ? selectedSpecialties.join(', ') : 'Todas' },
+      { Filtro: 'Categorias', Valor: selectedCategories.length ? selectedCategories.join(', ') : 'Todas' },
+      { Filtro: 'Tipos Atendimento', Valor: selectedAtendTypes.length ? selectedAtendTypes.join(', ') : 'Todos' },
+      { Filtro: 'Tipos Servico', Valor: selectedServiceTypes.length ? selectedServiceTypes.join(', ') : 'Todos' },
+    ];
+
+    const categoriaRows = data.categoryData.map(row => ({ Categoria: row.name, Volume: row.quantidade, Valor: row.valor }));
+    const servicoRows = data.serviceTypeData.map(row => ({ Tipo: row.name, Volume: row.quantidade, Valor: row.valor }));
+    const atendimentoRows = data.atendTypeData.map(row => ({ Tipo: row.name, Volume: row.quantidade, Valor: row.valor }));
+    const subareaRows = data.topSubAreas.map(row => ({ Subarea: row.name, Volume: row.quantidade, Valor: row.valor }));
+    const subareaTop5Rows = data.tempoMedioSubArea.map(row => ({ Subarea: row.name, Volume: row.quantidade, Valor: row.valor }));
+    const backlogRows = data.backlogAgingData.map(row => ({ Faixa: row.name, Valor: row.value, Volume: row.quantidade }));
+
+    const mensalRows = compareMode
+      ? data.compareMonthlyData.map(row => ({ Periodo: row.name, Volume: row.value, Valor: row.valor }))
+      : data.monthlyRealizedData.map(row => ({ Periodo: row.name, Volume: row.value, Valor: row.valor }));
+
+    const diarioRows = compareMode
+      ? data.compareDailyData.map(row => ({ Dia: row.day, [`${compareLabelA} (Volume)`]: formatNumber(row.a), [`${compareLabelA} (Valor)`]: formatCurrency(row.aValor), [`${compareLabelB} (Volume)`]: formatNumber(row.b), [`${compareLabelB} (Valor)`]: formatCurrency(row.bValor) }))
+      : data.dailyRealizedData.map(row => ({ Dia: row.day, Volume: formatNumber(row.volume), Valor: formatCurrency(row.valor) }));
+
+    await exportWorkbook(
+      [
+        { name: 'Resumo', title: 'Resumo do Periodo', rows: resumoRows },
+        { name: 'Filtros', title: 'Filtros Aplicados', rows: filtrosRows },
+        { name: 'Categoria', title: 'Producao por Categoria', rows: categoriaRows },
+        { name: 'Tipo_Servico', title: 'Tipo de Servico', rows: servicoRows },
+        { name: 'Tipo_Atendimento', title: 'Tipo de Atendimento', rows: atendimentoRows },
+        { name: 'Subarea_Top10', title: 'Producao por Subarea (Top 10)', rows: subareaRows },
+        { name: 'Subarea_Top5', title: 'Producao por Subarea (Top 5)', rows: subareaTop5Rows },
+        { name: 'Backlog', title: 'Backlog por Faixa', rows: backlogRows },
+        { name: 'Realizado_Mes', title: 'Realizado por Mes', rows: mensalRows },
+        { name: 'Realizado_Dia', title: 'Realizado por Dia', rows: diarioRows },
+      ],
+      makeFilename('export_geral')
+    );
+  };
+
+  const exportCategoria = () => { void exportSingle('Categoria', 'Producao por Categoria', data.categoryData.map(row => ({ Categoria: row.name, Volume: row.quantidade, Valor: row.valor }))); };
+  const exportTipoServico = () => { void exportSingle('Tipo_Servico', 'Tipo de Servico', data.serviceTypeData.map(row => ({ Tipo: row.name, Volume: row.quantidade, Valor: row.valor }))); };
+  const exportTipoAtendimento = () => { void exportSingle('Tipo_Atendimento', 'Tipo de Atendimento', data.atendTypeData.map(row => ({ Tipo: row.name, Volume: row.quantidade, Valor: row.valor }))); };
+  const exportSubareaTop10 = () => { void exportSingle('Subarea_Top10', 'Producao por Subarea (Top 10)', data.topSubAreas.map(row => ({ Subarea: row.name, Volume: row.quantidade, Valor: row.valor }))); };
+  const exportSubareaTop5 = () => { void exportSingle('Subarea_Top5', 'Producao por Subarea (Top 5)', data.tempoMedioSubArea.map(row => ({ Subarea: row.name, Volume: row.quantidade, Valor: row.valor }))); };
+  const exportBacklog = () => { void exportSingle('Backlog', 'Backlog por Faixa', data.backlogAgingData.map(row => ({ Faixa: row.name, Valor: row.value, Volume: row.quantidade }))); };
+  const exportRealizadoMes = () => { void exportSingle('Realizado_Mes', 'Realizado por Mes', compareMode
+    ? data.compareMonthlyData.map(row => ({ Periodo: row.name, Volume: row.value, Valor: row.valor }))
+    : data.monthlyRealizedData.map(row => ({ Periodo: row.name, Volume: row.value, Valor: row.valor }))
+  ); };
+  const exportRealizadoDia = () => { void exportSingle('Realizado_Dia', 'Realizado por Dia', compareMode
+    ? data.compareDailyData.map(row => ({ Dia: row.day, [`${compareLabelA} (Volume)`]: formatNumber(row.a), [`${compareLabelA} (Valor)`]: formatCurrency(row.aValor), [`${compareLabelB} (Volume)`]: formatNumber(row.b), [`${compareLabelB} (Valor)`]: formatCurrency(row.bValor) }))
+    : data.dailyRealizedData.map(row => ({ Dia: row.day, Volume: formatNumber(row.volume), Valor: formatCurrency(row.valor) }))
+  ); };
+
+
   const getHealth = () => {
     const taxa = data.taxaRealizacaoVolume || 0;
     const backlog = data.backlogTotalQuantidade || 0;
@@ -119,7 +300,6 @@ function App() {
   };
 
   const health = getHealth();
-
   const MiniKPI = ({ label, value, trend, tooltip }: { label: string; value: string; trend?: number | null; tooltip?: string }) => {
     const showAlert = trend !== undefined && trend !== null && Math.abs(trend) >= 25;
     const alertSymbol = trend !== undefined && trend !== null && trend < 0 ? '▼' : '▲';
@@ -201,6 +381,17 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (filters.years.length > 0) {
+      if (compareYearA === null) setCompareYearA(filters.years[0]);
+      if (compareYearB === null) setCompareYearB(filters.years.length > 1 ? filters.years[1] : filters.years[0]);
+    }
+    if (filters.months.length > 0) {
+      if (!compareMonthA) setCompareMonthA(filters.months[0]);
+      if (!compareMonthB) setCompareMonthB(filters.months[0]);
+    }
+  }, [filters.years, filters.months]);
+
+  useEffect(() => {
     const refreshDependentFilters = async () => {
       try {
         const db = await initDuckDB();
@@ -271,12 +462,14 @@ function App() {
         // Helper to build WHERE clause based on specific date columns
         const buildBaseFilter = (yearCol: string, monthCol: string) => {
             let q = `1=1`;
-            if (selectedYears.length > 0) {
-                const yearsStr = selectedYears.join(',');
+            const effectiveYears = compareMode && compareYearA ? [compareYearA] : selectedYears;
+            const effectiveMonth = compareMode ? compareMonthA : selectedMonth;
+            if (effectiveYears.length > 0) {
+                const yearsStr = effectiveYears.join(',');
                 q += ` AND ${yearCol} IN (${yearsStr})`;
             }
-            if (selectedMonth) {
-                q += ` AND ${monthCol} = '${sqlEscape(selectedMonth)}'`;
+            if (effectiveMonth) {
+                q += ` AND ${monthCol} = '${sqlEscape(effectiveMonth)}'`;
             }
             if (selectedUnits.length > 0) {
                 q += ` AND Unidade IN (${inClause(selectedUnits)})`;
@@ -302,13 +495,15 @@ function App() {
         // --- Logic for Floating Revenue (Receita Flutuante) ---
         // We need a cutoff date based on the selection to calculate accumulated history.
         // If multiple years selected, we take the max. If no month, we take Dec.
-        let cutoffYear = selectedYears.length > 0 ? Math.max(...selectedYears) : new Date().getFullYear();
+        const effectiveYearsForCutoff = compareMode && compareYearA ? [compareYearA] : selectedYears;
+        let cutoffYear = effectiveYearsForCutoff.length > 0 ? Math.max(...effectiveYearsForCutoff) : new Date().getFullYear();
         let cutoffMonthNum = 12; // Default to end of year
         
-        if (selectedMonth) {
-            const mIdx = filters.months.indexOf(selectedMonth);
+        const effectiveMonthForCutoff = compareMode ? compareMonthA : selectedMonth;
+        if (effectiveMonthForCutoff) {
+            const mIdx = filters.months.indexOf(effectiveMonthForCutoff);
             if (mIdx >= 0) cutoffMonthNum = filters.months.indexOf(selectedMonth) + 1; // 1-based
-        } else if (selectedYears.length === 0) {
+        } else if (effectiveYearsForCutoff.length === 0) {
              // If no filter at all, use current date
              const now = new Date();
              cutoffYear = now.getFullYear();
@@ -564,7 +759,7 @@ function App() {
 
         // Daily Realized Volume
         const dailyRealizedRes = await conn.query(`
-            SELECT DiaRealizado as day, COUNT(*) as volume 
+            SELECT DiaRealizado as day, COUNT(*) as volume, COALESCE(SUM(ValorUnitario), 0) as valor
             FROM realized_view 
             GROUP BY DiaRealizado 
             ORDER BY DiaRealizado
@@ -572,11 +767,81 @@ function App() {
 
         // Monthly Realized Volume
         const monthlyRealizedRes = await conn.query(`
-            SELECT MesNomeRealizado as name, MesNumRealizado, COUNT(*) as value
+            SELECT MesNomeRealizado as name, MesNumRealizado, COUNT(*) as value, COALESCE(SUM(ValorUnitario), 0) as valor
             FROM realized_view 
             GROUP BY MesNomeRealizado, MesNumRealizado 
             ORDER BY MesNumRealizado
         `);
+
+        // Compare Mode Data (Daily + Monthly)
+        let compareDailyData: { day: number; a: number; b: number; aValor: number; bValor: number }[] = [];
+        let compareMonthlyData: { name: string; value: number; valor: number; color: string }[] = [];
+        if (compareMode && compareYearA && compareYearB && compareMonthA && compareMonthB) {
+          const buildCompareFilter = (year: number, month: string) => {
+            let q = `1=1`;
+            q += ` AND AnoRealizado = ${year} AND MesNomeRealizado = '${sqlEscape(month)}'`;
+            if (selectedUnits.length > 0) q += ` AND Unidade IN (${inClause(selectedUnits)})`;
+            if (selectedSubUnits.length > 0) q += ` AND SubArea IN (${inClause(selectedSubUnits)})`;
+            if (selectedSpecialties.length > 0) q += ` AND NMServico IN (${inClause(selectedSpecialties)})`;
+            if (selectedCategories.length > 0) q += ` AND Categoria IN (${inClause(selectedCategories)})`;
+            if (selectedAtendTypes.length > 0) q += ` AND TipoAtendimento IN (${inClause(selectedAtendTypes)})`;
+            if (selectedServiceTypes.length > 0) q += ` AND TipoServico IN (${inClause(selectedServiceTypes)})`;
+            return q;
+          };
+
+          const filterA = buildCompareFilter(compareYearA, compareMonthA);
+          const filterB = buildCompareFilter(compareYearB, compareMonthB);
+
+          const dailyARes = await conn.query(`
+            SELECT DiaRealizado as day, COUNT(*) as volume, COALESCE(SUM(ValorUnitario), 0) as valor
+            FROM producao
+            WHERE ${filterA} AND TRIM(Situacao) = 'Confirmado' AND DataRealizado IS NOT NULL
+            GROUP BY DiaRealizado ORDER BY DiaRealizado
+          `);
+          const dailyBRes = await conn.query(`
+            SELECT DiaRealizado as day, COUNT(*) as volume, COALESCE(SUM(ValorUnitario), 0) as valor
+            FROM producao
+            WHERE ${filterB} AND TRIM(Situacao) = 'Confirmado' AND DataRealizado IS NOT NULL
+            GROUP BY DiaRealizado ORDER BY DiaRealizado
+          `);
+
+          const mapA = new Map(dailyARes.toArray().map(r => [Number(r.day), { volume: Number(r.volume), valor: Number(r.valor) }]));
+          const mapB = new Map(dailyBRes.toArray().map(r => [Number(r.day), { volume: Number(r.volume), valor: Number(r.valor) }]));
+          const maxDay = Math.max(
+            ...Array.from(mapA.keys()),
+            ...Array.from(mapB.keys()),
+            31
+          );
+          compareDailyData = Array.from({ length: maxDay }, (_, i) => {
+            const day = i + 1;
+            const aRow = mapA.get(day);
+            const bRow = mapB.get(day);
+            return {
+              day,
+              a: aRow?.volume || 0,
+              b: bRow?.volume || 0,
+              aValor: aRow?.valor || 0,
+              bValor: bRow?.valor || 0
+            };
+          });
+
+          const totalARes = await conn.query(`
+            SELECT COUNT(*) as value, COALESCE(SUM(ValorUnitario), 0) as valor FROM producao
+            WHERE ${filterA} AND TRIM(Situacao) = 'Confirmado' AND DataRealizado IS NOT NULL
+          `);
+          const totalBRes = await conn.query(`
+            SELECT COUNT(*) as value, COALESCE(SUM(ValorUnitario), 0) as valor FROM producao
+            WHERE ${filterB} AND TRIM(Situacao) = 'Confirmado' AND DataRealizado IS NOT NULL
+          `);
+          const totalA = Number(totalARes.toArray()[0]?.value || 0);
+          const totalB = Number(totalBRes.toArray()[0]?.value || 0);
+          const totalAValor = Number(totalARes.toArray()[0]?.valor || 0);
+          const totalBValor = Number(totalBRes.toArray()[0]?.valor || 0);
+          compareMonthlyData = [
+            { name: `${compareMonthA} ${compareYearA}`, value: totalA, valor: totalAValor, color: '#2b7fff' },
+            { name: `${compareMonthB} ${compareYearB}`, value: totalB, valor: totalBValor, color: '#ffa15a' },
+          ];
+        }
 
         // Category Data
         const categoryRes = await conn.query(`
@@ -652,8 +917,10 @@ function App() {
           trendTempoMedioRealizacao: trends.tempoMedioRealizacao,
           trendReceitaFlutuante: trends.receitaFlutuante,
 
-          dailyRealizedData: dailyRealizedRes.toArray().map(r => ({ day: r.day, volume: Number(r.volume) })),
-          monthlyRealizedData: monthlyRealizedRes.toArray().map(r => ({ name: r.name, value: Number(r.value) })),
+          dailyRealizedData: dailyRealizedRes.toArray().map(r => ({ day: r.day, volume: Number(r.volume), valor: Number(r.valor) })),
+          monthlyRealizedData: monthlyRealizedRes.toArray().map(r => ({ name: r.name, value: Number(r.value), valor: Number(r.valor) })),
+          compareDailyData,
+          compareMonthlyData,
           categoryData: categoryRes.toArray().map(r => ({ name: r.name, quantidade: Number(r.quantidade), valor: Number(r.valor) })),
           serviceTypeData: serviceTypeRes.toArray().map(r => ({ name: r.name, quantidade: Number(r.quantidade), valor: Number(r.valor) })),
           atendTypeData: atendTypeRes.toArray().map(r => ({ name: r.name, quantidade: Number(r.quantidade), valor: Number(r.valor) })),
@@ -669,7 +936,7 @@ function App() {
     };
 
     fetchData();
-  }, [selectedYears, selectedMonth, selectedUnits, selectedSubUnits, selectedSpecialties, selectedCategories, selectedAtendTypes, selectedServiceTypes]);
+  }, [selectedYears, selectedMonth, selectedUnits, selectedSubUnits, selectedSpecialties, selectedCategories, selectedAtendTypes, selectedServiceTypes, compareMode, compareYearA, compareYearB, compareMonthA, compareMonthB]);
 
   return (
     <div className="flex bg-background h-screen w-screen overflow-hidden font-sans text-text">
@@ -690,6 +957,16 @@ function App() {
         specialties={filters.specialties}
         selectedSpecialties={selectedSpecialties}
         onSpecialtiesChange={setSelectedSpecialties}
+        compareMode={compareMode}
+        onCompareModeChange={setCompareMode}
+        compareYearA={compareYearA}
+        compareYearB={compareYearB}
+        onCompareYearAChange={setCompareYearA}
+        onCompareYearBChange={setCompareYearB}
+        compareMonthA={compareMonthA}
+        compareMonthB={compareMonthB}
+        onCompareMonthAChange={setCompareMonthA}
+        onCompareMonthBChange={setCompareMonthB}
       />
 
       {/* Main Content */}
@@ -701,67 +978,86 @@ function App() {
             <div className="flex items-center gap-2 text-secondary text-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
               <span>
-                Período de {selectedMonth ? selectedMonth : "Todos os meses"} {selectedYears.length > 0 ? selectedYears.join(", ") : "Todos os anos"}
+              {compareMode && compareMonthA && compareYearA && compareMonthB && compareYearB
+                ? `Comparacao: ${compareLabelA} x ${compareLabelB}`
+                : `Periodo de ${selectedMonth ? selectedMonth : "Todos os meses"} ${selectedYears.length > 0 ? selectedYears.join(", ") : "Todos os anos"}`}
               </span>
             </div>
           </div>
           <div className="text-right">
              <div className="text-secondary text-[10px]">Dados atualizados em: {new Date().toLocaleDateString()}</div>
+             <button onClick={() => { void exportAll(); }} className="mt-1 inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-full border border-border bg-card text-secondary hover:text-white hover:border-primary transition-colors">
+               <Download className="w-3 h-3" />
+               Exportar Excel
+             </button>
              <div className="flex items-center justify-end mt-1">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold border border-white/20 bg-white/10 backdrop-blur-sm shadow-sm">FS</div>
              </div>
           </div>
         </div>
-        <div className="mb-3">
+        <div className="mb-3 flex items-center gap-2">
           <span
             className={`inline-flex items-center gap-2 text-[10px] font-bold px-2.5 py-1 rounded-full border tooltip tooltip-right ${health.color}`}
             data-tooltip="Risco baseado na relação Confirmados x Realizados. Taxa baixa indica poucas realizações."
           >
             {health.label}
           </span>
+          {compareMode && (
+            <span className="text-[10px] text-secondary">Comparacao visual limitada a 2 meses.</span>
+          )}
         </div>
 
         {/* Active Filters Badges */}
-        {(selectedYears.length > 0 || selectedMonth || selectedUnits.length > 0 || selectedSubUnits.length > 0 || selectedSpecialties.length > 0 || selectedCategories.length > 0 || selectedAtendTypes.length > 0 || selectedServiceTypes.length > 0) && (
+        {(compareMode || selectedYears.length > 0 || selectedMonth || selectedUnits.length > 0 || selectedSubUnits.length > 0 || selectedSpecialties.length > 0 || selectedCategories.length > 0 || selectedAtendTypes.length > 0 || selectedServiceTypes.length > 0) && (
           <div className="flex flex-wrap gap-2 mb-3">
-            {selectedYears.map(y => (
+            {compareMode && compareYearA && compareMonthA && (
+              <span className="bg-indigo-500/30 text-white text-[10px] px-2 py-1 rounded-full">
+                Mes A: {compareLabelA}
+              </span>
+            )}
+            {compareMode && compareYearB && compareMonthB && (
+              <span className="bg-indigo-500/30 text-white text-[10px] px-2 py-1 rounded-full">
+                Mes B: {compareLabelB}
+              </span>
+            )}
+            {!compareMode && selectedYears.map(y => (
               <button key={`year-${y}`} onClick={() => setSelectedYears(selectedYears.filter(v => v !== y))} className="bg-slate-600/50 text-white text-[10px] px-2 py-1 rounded-full">
-                Ano: {y} ×
+                Ano: {y} x
               </button>
             ))}
-            {selectedMonth && (
+            {!compareMode && selectedMonth && (
               <button onClick={() => setSelectedMonth('')} className="bg-indigo-500/30 text-white text-[10px] px-2 py-1 rounded-full">
-                Mês: {selectedMonth} ×
+                Mes: {selectedMonth} x
               </button>
             )}
             {selectedUnits.map(u => (
               <button key={`unit-${u}`} onClick={() => setSelectedUnits(selectedUnits.filter(v => v !== u))} className="bg-cyan-500/30 text-white text-[10px] px-2 py-1 rounded-full">
-                Unidade: {u} ×
+                Unidade: {u} x
               </button>
             ))}
             {selectedSubUnits.map(s => (
               <button key={`sub-${s}`} onClick={() => setSelectedSubUnits(selectedSubUnits.filter(v => v !== s))} className="bg-purple-500/30 text-white text-[10px] px-2 py-1 rounded-full">
-                Subárea: {s} ×
+                Subarea: {s} x
               </button>
             ))}
             {selectedSpecialties.map(s => (
               <button key={`spec-${s}`} onClick={() => setSelectedSpecialties(selectedSpecialties.filter(v => v !== s))} className="bg-rose-500/30 text-white text-[10px] px-2 py-1 rounded-full">
-                Especialidade: {s} ×
+                Especialidade: {s} x
               </button>
             ))}
             {selectedCategories.map(c => (
               <button key={`cat-${c}`} onClick={() => setSelectedCategories(selectedCategories.filter(v => v !== c))} className="bg-blue-500/30 text-white text-[10px] px-2 py-1 rounded-full">
-                Categoria: {c} ×
+                Categoria: {c} x
               </button>
             ))}
             {selectedAtendTypes.map(t => (
               <button key={`atend-${t}`} onClick={() => setSelectedAtendTypes(selectedAtendTypes.filter(v => v !== t))} className="bg-amber-500/30 text-white text-[10px] px-2 py-1 rounded-full">
-                Tipo Atendimento: {t} ×
+                Tipo Atendimento: {t} x
               </button>
             ))}
             {selectedServiceTypes.map(t => (
               <button key={`service-${t}`} onClick={() => setSelectedServiceTypes(selectedServiceTypes.filter(v => v !== t))} className="bg-emerald-500/30 text-white text-[10px] px-2 py-1 rounded-full">
-                Tipo Serviço: {t} ×
+                Tipo Servico: {t} x
               </button>
             ))}
           </div>
@@ -794,7 +1090,7 @@ function App() {
             {/* Composição */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 flex-[0.8] min-h-0">
               <div className="lg:col-span-1 h-full min-h-0">
-                <CategoryChart data={data.categoryData} onBarClick={(name) => toggleSelection(name, selectedCategories, setSelectedCategories)} />
+                <CategoryChart data={data.categoryData} onBarClick={(name) => toggleSelection(name, selectedCategories, setSelectedCategories)} onExport={exportCategoria} />
               </div>
               <div className="lg:col-span-1 h-full min-h-0">
                 <TypeBarChart
@@ -812,27 +1108,36 @@ function App() {
                   colors={['#ffa15a', '#636efa']}
                   onBarClick={(name) => toggleSelection(name, selectedAtendTypes, setSelectedAtendTypes)}
                   tooltipText="Valores representam a quantidade de atendimentos por tipo de Atendimento."
+                  onExport={exportTipoAtendimento}
                 />
               </div>
               <div className="lg:col-span-1 h-full min-h-0">
-                <TopSubAreasChart data={data.topSubAreas} onBarClick={(name) => toggleSelection(name, selectedSubUnits, setSelectedSubUnits)} />
+                <TopSubAreasChart data={data.topSubAreas} onBarClick={(name) => toggleSelection(name, selectedSubUnits, setSelectedSubUnits)} onExport={exportSubareaTop10} />
               </div>
             </div>
 
             {/* Charts Row 2 - Backlog & Lead Time */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 flex-[0.6] min-h-0">
-                <BacklogAgingChart data={data.backlogAgingData} />
-                <AvgLeadTimeSubAreaChart data={data.tempoMedioSubArea} />
+                <BacklogAgingChart data={data.backlogAgingData} onExport={exportBacklog} />
+                <AvgLeadTimeSubAreaChart data={data.tempoMedioSubArea} onExport={exportSubareaTop5} />
             </div>
 
             {/* Charts Row 3 - Monthly Realized (Swapped Position) */}
             <div className="grid grid-cols-1 gap-3 flex-[0.9] min-h-0">
-                <MonthlyRealizedChart data={data.monthlyRealizedData} />
+                {compareMode ? (
+                  <CompareMonthlyChart data={data.compareMonthlyData} onExport={exportRealizadoMes} />
+                ) : (
+                  <MonthlyRealizedChart data={data.monthlyRealizedData} onExport={exportRealizadoMes} />
+                )}
             </div>
 
             {/* Charts Row 4 - Daily Realized (Swapped Position) */}
             <div className="grid grid-cols-1 gap-3 flex-[0.9] min-h-0">
-                <DailyRealizedChart data={data.dailyRealizedData} />
+                {compareMode ? (
+                  <CompareDailyChart data={data.compareDailyData} labelA={compareLabelA} labelB={compareLabelB} onExport={exportRealizadoDia} />
+                ) : (
+                  <DailyRealizedChart data={data.dailyRealizedData} onExport={exportRealizadoDia} />
+                )}
             </div>
         </div>
       </div>

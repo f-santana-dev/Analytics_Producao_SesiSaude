@@ -1,7 +1,22 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, ComposedChart } from 'recharts';
+import { Download } from 'lucide-react';
 
 const formatCurrencyBR = (val: number) =>
   `R$ ${Number(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const ExportButton = ({ onClick }: { onClick?: () => void }) => {
+  if (!onClick) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Exportar Excel"
+      className="ml-auto text-secondary hover:text-white transition-colors"
+    >
+      <Download className="w-3.5 h-3.5" />
+    </button>
+  );
+};
 
 const StandardTooltip = ({
   active,
@@ -31,8 +46,7 @@ const StandardTooltip = ({
         </p>
         <div className="flex flex-col gap-0.5">
           <p>Valor: <span className="font-mono font-bold">{valueFormatter(value)}</span></p>
-          <p>Porcentagem: <span className="font-mono font-bold">{percentage}%</span></p>
-          <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
+                    <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
           {showTotal && (
             <>
               <hr className="border-border my-1" />
@@ -57,10 +71,7 @@ const MonthlyTooltip = ({ active, payload, label, total }: any) => {
         <p className="text-xs mb-1">
           Valor: <span className="font-mono font-bold text-white">{Number(current?.value || 0).toLocaleString('pt-BR')}</span>
         </p>
-        <p className="text-xs mb-1">
-          Porcentagem: <span className="font-mono font-bold">{total > 0 ? ((Number(current?.value || 0) / total) * 100).toFixed(1) : '0.0'}%</span>
-        </p>
-        <p className="text-[10px] text-gray-400">Total: <span className="font-mono">{Number(total || 0).toLocaleString('pt-BR')}</span></p>
+                <p className="text-[10px] text-gray-400">Total: <span className="font-mono">{Number(total || 0).toLocaleString('pt-BR')}</span></p>
         {trend !== undefined && trend !== null && (
           <div className={`flex items-center text-xs font-bold ${trend >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             <span className="mr-1">{trend >= 0 ? '▲' : '▼'}</span>
@@ -89,10 +100,11 @@ const CustomTooltip = ({ active, payload, label, total, valueFormatter, totalFor
 
 // --- Monthly Realized Chart ---
 interface MonthlyRealizedChartProps {
-  data: { name: string; value: number; trend?: number }[];
+  data: { name: string; value: number; valor: number; trend?: number }[];
+  onExport?: () => void;
 }
 
-export function MonthlyRealizedChart({ data }: MonthlyRealizedChartProps) {
+export function MonthlyRealizedChart({ data, onExport }: MonthlyRealizedChartProps) {
   // Pre-calculate trends if not present (simple MoM)
   const chartData = data.map((item, index) => {
       let trend = 0;
@@ -102,6 +114,7 @@ export function MonthlyRealizedChart({ data }: MonthlyRealizedChartProps) {
       }
       return { ...item, trend: index === 0 ? null : trend };
   });
+  const totalValor = chartData.reduce((acc, cur) => acc + (cur.valor || 0), 0);
 
   return (
     <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
@@ -109,6 +122,7 @@ export function MonthlyRealizedChart({ data }: MonthlyRealizedChartProps) {
         <span className="w-1 h-3 bg-primary rounded-full"></span>
         REALIZADO POR MÊS
         <span className="tooltip text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip="Valores representam a quantidade de atendimentos realizados por mês.">i</span>
+        <ExportButton onClick={onExport} />
       </h3>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
@@ -129,7 +143,24 @@ export function MonthlyRealizedChart({ data }: MonthlyRealizedChartProps) {
                     domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]}
                 />
                 {/* Secondary Y Axis for Line if needed, or just overlay */}
-                <Tooltip content={<MonthlyTooltip total={chartData.reduce((acc, cur) => acc + (cur.value || 0), 0)} />} cursor={{fill: '#2d303e', opacity: 0.4}} />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload || !payload.length) return null;
+                    const row = payload[0]?.payload as { valor?: number };
+                    const valor = Number(row?.valor || 0);
+                    const percentage = totalValor > 0 ? ((valor / totalValor) * 100).toFixed(1) : '0.0';
+                    return (
+                      <div className="bg-card border border-border p-2 rounded shadow-xl text-white text-xs z-50">
+                        <p className="font-bold mb-1">{label}</p>
+                        <div className="flex flex-col gap-0.5">
+                          <p>Valor: <span className="font-mono font-bold">{formatCurrencyBR(valor)}</span></p>
+                          <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
+                        </div>
+                      </div>
+                    );
+                  }}
+                  cursor={{fill: '#2d303e', opacity: 0.4}}
+                />
                 
                 <Bar yAxisId="left" dataKey="value" fill="#2b7fff" radius={[2, 2, 0, 0]} label={{ position: 'top', fill: '#fff', fontSize: 9 }}>
                     {chartData.map((entry, index) => (
@@ -156,16 +187,19 @@ export function MonthlyRealizedChart({ data }: MonthlyRealizedChartProps) {
 
 // --- Daily Realized Chart ---
 interface DailyRealizedChartProps {
-  data: { day: number; volume: number }[];
+  data: { day: number; volume: number; valor: number }[];
+  onExport?: () => void;
 }
 
-export function DailyRealizedChart({ data }: DailyRealizedChartProps) {
+export function DailyRealizedChart({ data, onExport }: DailyRealizedChartProps) {
+  const totalValor = data.reduce((acc, cur) => acc + (cur.valor || 0), 0);
   return (
     <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
       <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
         <span className="w-1 h-3 bg-primary rounded-full"></span>
         REALIZADO POR DIA
         <span className="tooltip text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip="Valores representam a quantidade de atendimentos realizados por dia.">i</span>
+        <ExportButton onClick={onExport} />
       </h3>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
@@ -182,9 +216,151 @@ export function DailyRealizedChart({ data }: DailyRealizedChartProps) {
                 axisLine={false}
                 tickLine={false}
             />
-            <Tooltip content={<CustomTooltip total={data.reduce((acc, cur) => acc + (cur.volume || 0), 0)} valueFormatter={(v: number) => Number(v).toLocaleString('pt-BR')} totalFormatter={(v: number) => Number(v).toLocaleString('pt-BR')} />} cursor={{fill: '#2d303e', opacity: 0.4}} />
+            <Tooltip
+              cursor={{fill: '#2d303e', opacity: 0.4}}
+              content={({ active, payload, label }) => {
+                if (!active || !payload || !payload.length) return null;
+                const row = payload[0]?.payload as { valor?: number };
+                const valor = Number(row?.valor || 0);
+                const percentage = totalValor > 0 ? ((valor / totalValor) * 100).toFixed(1) : '0.0';
+                return (
+                  <div className="bg-card border border-border p-2 rounded shadow-xl text-white text-xs z-50">
+                    <p className="font-bold mb-1">Dia {label}</p>
+                    <div className="flex flex-col gap-0.5">
+                      <p>Valor: <span className="font-mono font-bold">{formatCurrencyBR(valor)}</span></p>
+                      <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
+                    </div>
+                  </div>
+                );
+              }}
+            />
             <Bar dataKey="volume" fill="#2b7fff" radius={[2, 2, 0, 0]} label={{ position: 'top', fill: '#fff', fontSize: 9 }} />
             </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+// --- Compare Monthly Chart ---
+interface CompareMonthlyChartProps {
+  data: { name: string; value: number; valor: number; color: string }[];
+  onExport?: () => void;
+}
+
+export function CompareMonthlyChart({ data, onExport }: CompareMonthlyChartProps) {
+  const totalValor = data.reduce((acc, cur) => acc + (cur.valor || 0), 0);
+  return (
+    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
+      <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
+        <span className="w-1 h-3 bg-primary rounded-full"></span>
+        COMPARACAO ENTRE MESES
+        <span className="tooltip text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip="Comparacao visual limitada a 2 meses.">i</span>
+        <ExportButton onClick={onExport} />
+      </h3>
+      <div className="flex-1 min-h-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 14, right: 10, left: 10, bottom: 0 }}>
+            <XAxis
+              dataKey="name"
+              tick={{ fill: '#a0a0a0', fontSize: 10 }}
+              tickLine={false}
+              axisLine={false}
+              interval={0}
+            />
+            <YAxis hide domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.2)]} />
+            <Tooltip
+              cursor={{ fill: '#2d303e', opacity: 0.4 }}
+              content={({ active, payload, label }) => {
+                if (!active || !payload || !payload.length) return null;
+                const row = payload[0]?.payload as { valor?: number };
+                const valor = Number(row?.valor || 0);
+                const percentage = totalValor > 0 ? ((valor / totalValor) * 100).toFixed(1) : '0.0';
+                return (
+                  <div className="bg-card border border-border p-2 rounded shadow-xl text-white text-xs z-50">
+                    <p className="font-bold mb-1">{label}</p>
+                    <div className="flex flex-col gap-0.5">
+                      <p>Valor: <span className="font-mono font-bold">{formatCurrencyBR(valor)}</span></p>
+                      <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+            <Bar
+              dataKey="value"
+              radius={[2, 2, 0, 0]}
+              label={{ position: 'top', fill: '#fff', fontSize: 9, formatter: (v: any) => Number(v).toLocaleString('pt-BR') }}
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color || '#2b7fff'} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+// --- Compare Daily Chart ---
+interface CompareDailyChartProps {
+  data: { day: number; a: number; b: number; aValor: number; bValor: number }[];
+  labelA: string;
+  labelB: string;
+  onExport?: () => void;
+}
+
+export function CompareDailyChart({ data, labelA, labelB, onExport }: CompareDailyChartProps) {
+  const totalAValor = data.reduce((acc, cur) => acc + (cur.aValor || 0), 0);
+  const totalBValor = data.reduce((acc, cur) => acc + (cur.bValor || 0), 0);
+  return (
+    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
+      <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
+        <span className="w-1 h-3 bg-primary rounded-full"></span>
+        REALIZADO POR DIA (COMPARACAO)
+        <span className="tooltip text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip="Comparacao visual limitada a 2 meses.">i</span>
+        <ExportButton onClick={onExport} />
+      </h3>
+      <div className="flex-1 min-h-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 14, right: 10, left: 10, bottom: 0 }} barGap={0} barCategoryGap="0%">
+            <XAxis
+              dataKey="day"
+              tick={{ fill: '#a0a0a0', fontSize: 10 }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis hide domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.2)]} />
+            <Tooltip
+              cursor={{ fill: '#2d303e', opacity: 0.4 }}
+              content={({ active, payload, label }) => {
+                if (!active || !payload || !payload.length) return null;
+                const row = payload[0]?.payload as { aValor?: number; bValor?: number };
+                const valA = Number(row?.aValor || 0);
+                const valB = Number(row?.bValor || 0);
+                const pctA = totalAValor > 0 ? ((valA / totalAValor) * 100).toFixed(1) : '0.0';
+                const pctB = totalBValor > 0 ? ((valB / totalBValor) * 100).toFixed(1) : '0.0';
+                return (
+                  <div className="bg-card border border-border p-2 rounded shadow-xl text-white text-xs z-50">
+                    <p className="font-bold mb-1">Dia {label}</p>
+                    <div className="flex flex-col gap-0.5">
+                      <p style={{ color: '#2b7fff' }}>
+                        {labelA}: <span className="font-mono font-bold">{formatCurrencyBR(valA)}</span>
+                      </p>
+                      <p className="text-[10px] text-gray-400">Isso representa {pctA}% do total de {labelA}.</p>
+                      <p style={{ color: '#ffa15a' }}>
+                        {labelB}: <span className="font-mono font-bold">{formatCurrencyBR(valB)}</span>
+                      </p>
+                      <p className="text-[10px] text-gray-400">Isso representa {pctB}% do total de {labelB}.</p>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+            <Bar dataKey="a" fill="#2b7fff" radius={[2, 2, 0, 0]} barSize={24} label={{ position: 'top', fill: '#fff', fontSize: 8, formatter: (v: any) => Number(v).toLocaleString('pt-BR') }} />
+            <Bar dataKey="b" fill="#ffa15a" radius={[2, 2, 0, 0]} barSize={24} label={{ position: 'top', fill: '#fff', fontSize: 8, formatter: (v: any) => Number(v).toLocaleString('pt-BR') }} />
+          </BarChart>
         </ResponsiveContainer>
       </div>
     </div>
@@ -195,15 +371,17 @@ export function DailyRealizedChart({ data }: DailyRealizedChartProps) {
 interface CategoryChartProps {
   data: { name: string; quantidade: number; valor: number }[];
   onBarClick?: (name: string) => void;
+  onExport?: () => void;
 }
 
-export function CategoryChart({ data, onBarClick }: CategoryChartProps) {
+export function CategoryChart({ data, onBarClick, onExport }: CategoryChartProps) {
   return (
     <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
       <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
         <span className="w-1 h-3 bg-primary rounded-full"></span>
         POR CATEGORIA
         <span className="tooltip tooltip-right text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip="Valores representam a quantidade de atendimentos por categoria.">i</span>
+        <ExportButton onClick={onExport} />
       </h3>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
@@ -235,8 +413,7 @@ export function CategoryChart({ data, onBarClick }: CategoryChartProps) {
                     <p className="font-bold mb-1" style={{ color: '#7CFFB2' }}>{label}</p>
                     <div className="flex flex-col gap-0.5">
                       <p>Valor: <span className="font-mono font-bold">{formatCurrencyBR(valor)}</span></p>
-                      <p>Porcentagem: <span className="font-mono font-bold">{percentage}%</span></p>
-          <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
+                                <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
                     </div>
                   </div>
                 );
@@ -267,9 +444,10 @@ interface TypeBarChartProps {
   colors: string[];
   onBarClick?: (name: string) => void;
   tooltipText?: string;
+  onExport?: () => void;
 }
 
-export function TypeBarChart({ title, data, colors, onBarClick, tooltipText }: TypeBarChartProps) {
+export function TypeBarChart({ title, data, colors, onBarClick, tooltipText, onExport }: TypeBarChartProps) {
   const totalVolume = data.reduce((acc, cur) => acc + (cur.quantidade || 0), 0);
   return (
     <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
@@ -277,6 +455,7 @@ export function TypeBarChart({ title, data, colors, onBarClick, tooltipText }: T
         <span className="w-1 h-3 bg-orange-500 rounded-full"></span>
         {title}
         <span className="tooltip text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip={tooltipText || "Valores representam a quantidade de atendimentos por tipo de Servi?o."}>i</span>
+        <ExportButton onClick={onExport} />
       </h3>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
@@ -303,8 +482,7 @@ export function TypeBarChart({ title, data, colors, onBarClick, tooltipText }: T
                     <p className="font-bold mb-1" style={{ color: '#7CFFB2' }}>{label}</p>
                     <div className="flex flex-col gap-0.5">
                       <p>Valor: <span className="font-mono font-bold">{formatCurrencyBR(valor)}</span></p>
-                      <p>Porcentagem: <span className="font-mono font-bold">{percentage}%</span></p>
-          <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
+                                <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
                     </div>
                   </div>
                 );
@@ -336,9 +514,10 @@ export function TypeBarChart({ title, data, colors, onBarClick, tooltipText }: T
 interface TopSubAreasChartProps {
   data: { name: string; quantidade: number; valor: number }[];
   onBarClick?: (name: string) => void;
+  onExport?: () => void;
 }
 
-export function TopSubAreasChart({ data, onBarClick }: TopSubAreasChartProps) {
+export function TopSubAreasChart({ data, onBarClick, onExport }: TopSubAreasChartProps) {
   const totalVolume = data.reduce((acc, cur) => acc + (cur.quantidade || 0), 0);
   return (
     <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
@@ -346,6 +525,7 @@ export function TopSubAreasChart({ data, onBarClick }: TopSubAreasChartProps) {
         <span className="w-1 h-3 bg-purple-500 rounded-full"></span>
         PRODUÇÃO POR SUBÁREA
         <span className="tooltip text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip="Valores representam a quantidade de atendimentos por subárea.">i</span>
+        <ExportButton onClick={onExport} />
       </h3>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
@@ -376,8 +556,7 @@ export function TopSubAreasChart({ data, onBarClick }: TopSubAreasChartProps) {
                     <p className="font-bold mb-1" style={{ color: '#7CFFB2' }}>{label}</p>
                     <div className="flex flex-col gap-0.5">
                       <p>Valor: <span className="font-mono font-bold">{formatCurrencyBR(valor)}</span></p>
-                      <p>Porcentagem: <span className="font-mono font-bold">{percentage}%</span></p>
-          <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
+                                <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
                     </div>
                   </div>
                 );
@@ -404,9 +583,10 @@ export function TopSubAreasChart({ data, onBarClick }: TopSubAreasChartProps) {
 // --- Backlog Aging Chart ---
 interface BacklogAgingChartProps {
   data: { name: string; value: number; quantidade: number }[];
+  onExport?: () => void;
 }
 
-export function BacklogAgingChart({ data }: BacklogAgingChartProps) {
+export function BacklogAgingChart({ data, onExport }: BacklogAgingChartProps) {
   const totalQuantidade = data.reduce((acc, cur) => acc + (cur.quantidade || 0), 0);
   return (
     <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
@@ -414,6 +594,7 @@ export function BacklogAgingChart({ data }: BacklogAgingChartProps) {
         <span className="w-1 h-3 bg-emerald-500 rounded-full"></span>
         BACKLOG POR FAIXA (VALOR)
         <span className="tooltip text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip="Valores representam o total em R$ dos confirmados ainda não realizados, por faixa de dias.">i</span>
+        <ExportButton onClick={onExport} />
       </h3>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
@@ -437,8 +618,7 @@ export function BacklogAgingChart({ data }: BacklogAgingChartProps) {
                     <p className="font-bold mb-1" style={{ color: '#7CFFB2' }}>Faixa: {label}</p>
                     <div className="flex flex-col gap-0.5">
                       <p>Volume: <span className="font-mono font-bold">{quantidade.toLocaleString('pt-BR')}</span></p>
-                      <p>Porcentagem: <span className="font-mono font-bold">{percentage}%</span></p>
-          <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
+                                <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
                     </div>
                   </div>
                 );
@@ -469,9 +649,10 @@ export function BacklogAgingChart({ data }: BacklogAgingChartProps) {
 // --- Avg Lead Time by SubArea ---
 interface AvgLeadTimeSubAreaChartProps {
   data: { name: string; quantidade: number; valor: number }[];
+  onExport?: () => void;
 }
 
-export function AvgLeadTimeSubAreaChart({ data }: AvgLeadTimeSubAreaChartProps) {
+export function AvgLeadTimeSubAreaChart({ data, onExport }: AvgLeadTimeSubAreaChartProps) {
   const totalVolume = data.reduce((acc, cur) => acc + (cur.quantidade || 0), 0);
   return (
     <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
@@ -479,6 +660,7 @@ export function AvgLeadTimeSubAreaChart({ data }: AvgLeadTimeSubAreaChartProps) 
         <span className="w-1 h-3 bg-yellow-500 rounded-full"></span>
         PRODUÇÃO POR SUBÁREA
         <span className="tooltip text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip="Valores representam a quantidade de atendimentos realizados por subárea.">i</span>
+        <ExportButton onClick={onExport} />
       </h3>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
@@ -509,8 +691,7 @@ export function AvgLeadTimeSubAreaChart({ data }: AvgLeadTimeSubAreaChartProps) 
                     <p className="font-bold mb-1" style={{ color: '#7CFFB2' }}>{label}</p>
                     <div className="flex flex-col gap-0.5">
                       <p>Valor: <span className="font-mono font-bold">{formatCurrencyBR(valor)}</span></p>
-                      <p>Porcentagem: <span className="font-mono font-bold">{percentage}%</span></p>
-          <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
+                                <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
                     </div>
                   </div>
                 );

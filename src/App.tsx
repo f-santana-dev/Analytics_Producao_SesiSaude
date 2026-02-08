@@ -196,7 +196,13 @@ function App() {
         ws.getRow(6 + index).values = [null, ...rowValues];
       });
 
-      ws.columns = headers.map((h) => ({ key: h, width: Math.max(12, h.length + 4) }));
+      const fixedWidths = [25.14, 21, 12, 12, 12];
+      ws.columns = headers.map((h, idx) => {
+        if (idx < fixedWidths.length) {
+          return { key: h, width: fixedWidths[idx] };
+        }
+        return { key: h, width: Math.max(12, h.length + 4) };
+      });
     });
 
     const buffer = await wb.xlsx.writeBuffer();

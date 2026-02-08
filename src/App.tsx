@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { initDuckDB } from './lib/duckdb';
 import { Sidebar } from './components/Sidebar';
 import { KPICard } from './components/KPICard';
-import { CategoryChart, DailyRealizedChart, DonutChart, TopSubAreasChart, MonthlyRealizedChart, BacklogAgingChart, AvgLeadTimeSubAreaChart } from './components/Charts';
+import { CategoryChart, DailyRealizedChart, TopSubAreasChart, MonthlyRealizedChart, BacklogAgingChart, AvgLeadTimeSubAreaChart, TypeBarChart } from './components/Charts';
 
 interface DashboardData {
   totalFaturamento: number;
@@ -771,23 +771,23 @@ function App() {
                 <CategoryChart data={data.categoryData} onBarClick={(name) => toggleSelection(name, selectedCategories, setSelectedCategories)} />
               </div>
               <div className="lg:col-span-1 h-full min-h-0">
-                <DonutChart 
-                    title="TIPO SERVIÇO" 
-                    data={data.serviceTypeData} 
-                    colors={['#00cc96', '#2b7fff']} 
-                    onSliceClick={(name) => toggleSelection(name, selectedServiceTypes, setSelectedServiceTypes)}
-                    tooltipText="Valores representam a quantidade de atendimentos por tipo de Serviço."
+                <TypeBarChart
+                  title="TIPO SERVIÇO"
+                  data={data.serviceTypeData}
+                  colors={['#00cc96', '#2b7fff']}
+                  onBarClick={(name) => toggleSelection(name, selectedServiceTypes, setSelectedServiceTypes)}
+                  tooltipText="Valores representam a quantidade de atendimentos por tipo de Serviço."
                 />
-            </div>
-            <div className="lg:col-span-1 h-full min-h-0">
-                <DonutChart 
-                    title="TIPO ATENDIMENTO" 
-                    data={data.atendTypeData} 
-                    colors={['#ffa15a', '#636efa']} 
-                    onSliceClick={(name) => toggleSelection(name, selectedAtendTypes, setSelectedAtendTypes)}
-                    tooltipText="Valores representam a quantidade de atendimentos por tipo de Atendimento."
+              </div>
+              <div className="lg:col-span-1 h-full min-h-0">
+                <TypeBarChart
+                  title="TIPO ATENDIMENTO"
+                  data={data.atendTypeData}
+                  colors={['#ffa15a', '#636efa']}
+                  onBarClick={(name) => toggleSelection(name, selectedAtendTypes, setSelectedAtendTypes)}
+                  tooltipText="Valores representam a quantidade de atendimentos por tipo de Atendimento."
                 />
-            </div>
+              </div>
               <div className="lg:col-span-1 h-full min-h-0">
                 <TopSubAreasChart data={data.topSubAreas} onBarClick={(name) => toggleSelection(name, selectedSubUnits, setSelectedSubUnits)} />
               </div>

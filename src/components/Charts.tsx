@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, ComposedChart } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, ComposedChart } from 'recharts';
 
 const formatCurrencyBR = (val: number) =>
   `R$ ${Number(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -43,20 +43,6 @@ const StandardTooltip = ({
     );
   }
   return null;
-};
-
-// Custom Tooltip for Donut Chart
-const DonutTooltip = ({ active, payload, total }: any) => {
-  return (
-    <StandardTooltip
-      active={active}
-      payload={payload}
-      total={total}
-      valueFormatter={(v) => Number(v).toLocaleString('pt-BR')}
-      totalFormatter={(v) => Number(v).toLocaleString('pt-BR')}
-      showTotal={false}
-    />
-  );
 };
 
 // Tooltip with Trend for Monthly Chart
@@ -272,89 +258,72 @@ export function CategoryChart({ data, onBarClick }: CategoryChartProps) {
   );
 }
 
-// --- Donut Chart (Generic) ---
-interface DonutChartProps {
+// --- Tipo Servi?o / Tipo Atendimento (Bar Chart) ---
+interface TypeBarChartProps {
   title: string;
   data: { name: string; quantidade: number; valor: number }[];
   colors: string[];
-  onSliceClick?: (name: string) => void;
+  onBarClick?: (name: string) => void;
   tooltipText?: string;
 }
 
-export function DonutChart({ title, data, colors, onSliceClick, tooltipText }: DonutChartProps) {
-  const totalVolume = data.reduce((acc, curr) => acc + (curr.quantidade || 0), 0);
-
+export function TypeBarChart({ title, data, colors, onBarClick, tooltipText }: TypeBarChartProps) {
+  const totalVolume = data.reduce((acc, cur) => acc + (cur.quantidade || 0), 0);
   return (
     <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col">
       <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
-         <span className="w-1 h-3 bg-orange-500 rounded-full"></span>
-         {title}
-         <span className="tooltip text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip={tooltipText || "Valores representam a quantidade de atendimentos por tipo de Serviço."}>i</span>
+        <span className="w-1 h-3 bg-orange-500 rounded-full"></span>
+        {title}
+        <span className="tooltip text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip={tooltipText || "Valores representam a quantidade de atendimentos por tipo de Servi?o."}>i</span>
       </h3>
-      <div className="flex-1 min-h-0 relative">
-         <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-                <Pie
-                    data={data}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={34}
-                    outerRadius={52}
-                    paddingAngle={2}
-                    dataKey="quantidade"
-                    startAngle={90}
-                    endAngle={-270}
-                    stroke="none"
-                    onClick={(e: any) => {
-                      const name = e?.name;
-                      if (name && onSliceClick) onSliceClick(name);
-                    }}
-                    label={({ cx, cy, midAngle, outerRadius, value }) => {
-                      const v = Number(value || 0);
-                      if (v === 0) return '';
-                      const RAD = Math.PI / 180;
-                      const radius = outerRadius + 12;
-                      const x = (cx as number) + radius * Math.cos(-midAngle * RAD);
-                      const y = (cy as number) + radius * Math.sin(-midAngle * RAD);
-                      const textAnchor = x > (cx as number) ? 'start' : 'end';
-                      return (
-                        <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fill="#cfd8dc" fontSize={10}>
-                          {v.toLocaleString('pt-BR')}
-                        </text>
-                      );
-                    }}
-                    labelLine={{ stroke: '#2d303e', strokeWidth: 1 }}
-                >
-                    {data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                    ))}
-                </Pie>
-                <Tooltip 
-                  content={({ active, payload }) => {
-                    if (!active || !payload || !payload.length) return null;
-                    const row = payload[0]?.payload as { name?: string; quantidade?: number; valor?: number; fill?: string };
-                    const valor = Number(row?.valor || 0);
-                    const quantidade = Number(row?.quantidade || 0);
-                    const percentage = totalVolume > 0 ? ((quantidade / totalVolume) * 100).toFixed(1) : '0.0';
-                    return (
-                      <div className="bg-card border border-border p-2 rounded shadow-xl text-white text-xs z-50">
-                        <p className="font-bold mb-1" style={{ color: row?.fill || '#7CFFB2' }}>{row?.name}</p>
-                        <div className="flex flex-col gap-0.5">
-                          <p>Valor: <span className="font-mono font-bold">{formatCurrencyBR(valor)}</span></p>
-                          <p>Porcentagem: <span className="font-mono font-bold">{percentage}%</span></p>
-                        </div>
-                      </div>
-                    );
-                  }}
-                />
-                <Legend 
-                    verticalAlign="bottom" 
-                    height={24} 
-                    iconType="circle"
-                    formatter={(value) => <span className="text-gray-300 ml-1 text-[10px]">{value}</span>}
-                />
-            </PieChart>
-         </ResponsiveContainer>
+      <div className="flex-1 min-h-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+            <XAxis type="number" hide />
+            <YAxis
+              dataKey="name"
+              type="category"
+              width={90}
+              tick={{ fill: '#e0e0e0', fontSize: 10 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              cursor={{ fill: '#2d303e', opacity: 0.4 }}
+              content={({ active, payload, label }) => {
+                if (!active || !payload || !payload.length) return null;
+                const row = payload[0]?.payload as { valor?: number; quantidade?: number };
+                const valor = Number(row?.valor || 0);
+                const quantidade = Number(row?.quantidade || 0);
+                const percentage = totalVolume > 0 ? ((quantidade / totalVolume) * 100).toFixed(1) : '0.0';
+                return (
+                  <div className="bg-card border border-border p-2 rounded shadow-xl text-white text-xs z-50">
+                    <p className="font-bold mb-1" style={{ color: '#7CFFB2' }}>{label}</p>
+                    <div className="flex flex-col gap-0.5">
+                      <p>Valor: <span className="font-mono font-bold">{formatCurrencyBR(valor)}</span></p>
+                      <p>Porcentagem: <span className="font-mono font-bold">{percentage}%</span></p>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+            <Bar
+              dataKey="quantidade"
+              fill={colors[0]}
+              radius={[0, 4, 4, 0]}
+              barSize={20}
+              label={{ position: 'right', fill: '#fff', fontSize: 9, formatter: (v: any) => Number(v).toLocaleString('pt-BR') }}
+              onClick={(e: any) => {
+                const name = e?.payload?.name;
+                if (name && onBarClick) onBarClick(name);
+              }}
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
@@ -503,7 +472,7 @@ export function AvgLeadTimeSubAreaChart({ data }: AvgLeadTimeSubAreaChartProps) 
     <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col">
       <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
         <span className="w-1 h-3 bg-yellow-500 rounded-full"></span>
-        PRODUÇÃO POR SUBÁREA (TOP 5)
+        PRODUÇÃO POR SUBÁREA
         <span className="tooltip text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip="Valores representam a quantidade de atendimentos realizados por subárea.">i</span>
       </h3>
       <div className="flex-1 min-h-0">

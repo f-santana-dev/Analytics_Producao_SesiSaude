@@ -108,6 +108,9 @@ function App() {
   const [compareYearB, setCompareYearB] = useState<number | null>(null);
   const [compareMonthA, setCompareMonthA] = useState<string>('');
   const [compareMonthB, setCompareMonthB] = useState<string>('');
+  const [defaultYear, setDefaultYear] = useState<number | null>(null);
+  const [defaultMonth, setDefaultMonth] = useState<string>('');
+  const [defaultPrevMonth, setDefaultPrevMonth] = useState<string>('');
 
   const formatCurrency = (val: number | undefined | null) => {
       return `R$ ${(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -373,9 +376,36 @@ function App() {
 
         setFilters({ years, months, units, subUnits, specialties });
         
-        // Default Selections
-        if (years.length > 0) setSelectedYears([years[0]]); // Select first year by default
-        if (months.length > 0) setSelectedMonth(months[0]); // Select first month usually January if available or based on data
+        // Default Selections (latest year/month based on data)
+        if (years.length > 0) {
+          const latestYear = years[0];
+          setDefaultYear(latestYear);
+
+          const latestMonthRes = await conn.query(`
+            SELECT MesNome, MesNum
+            FROM producao
+            WHERE Ano = ${latestYear}
+            GROUP BY MesNome, MesNum
+            ORDER BY MesNum DESC
+            LIMIT 2
+          `);
+          const latestMonths = latestMonthRes.toArray();
+          const latestMonth = latestMonths[0]?.MesNome || '';
+          const prevMonth = latestMonths[1]?.MesNome || latestMonth;
+
+          setDefaultMonth(latestMonth);
+          setDefaultPrevMonth(prevMonth);
+
+          setSelectedYears([latestYear]);
+          if (latestMonth) setSelectedMonth(latestMonth);
+
+          setCompareYearA(latestYear);
+          setCompareYearB(latestYear);
+          if (latestMonth) {
+            setCompareMonthA(prevMonth);
+            setCompareMonthB(latestMonth);
+          }
+        }
         
         await conn.close();
       } catch (error) {
@@ -387,15 +417,25 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (filters.years.length > 0) {
-      if (compareYearA === null) setCompareYearA(filters.years[0]);
-      if (compareYearB === null) setCompareYearB(filters.years.length > 1 ? filters.years[1] : filters.years[0]);
+    if (filters.years.length > 0 && defaultYear === null) {
+      setDefaultYear(filters.years[0]);
     }
-    if (filters.months.length > 0) {
-      if (!compareMonthA) setCompareMonthA(filters.months[0]);
-      if (!compareMonthB) setCompareMonthB(filters.months[0]);
+    if (filters.months.length > 0 && !defaultMonth) {
+      const latestMonth = filters.months[filters.months.length - 1];
+      const prevMonth = filters.months.length > 1 ? filters.months[filters.months.length - 2] : latestMonth;
+      setDefaultMonth(latestMonth);
+      setDefaultPrevMonth(prevMonth);
     }
   }, [filters.years, filters.months]);
+
+  useEffect(() => {
+    if (compareMode && defaultYear && defaultMonth) {
+      setCompareYearA(defaultYear);
+      setCompareYearB(defaultYear);
+      setCompareMonthA(defaultPrevMonth || defaultMonth);
+      setCompareMonthB(defaultMonth);
+    }
+  }, [compareMode, defaultYear, defaultMonth, defaultPrevMonth]);
 
   useEffect(() => {
     const refreshDependentFilters = async () => {

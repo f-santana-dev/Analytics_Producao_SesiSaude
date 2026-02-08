@@ -249,12 +249,12 @@ function App() {
       { Filtro: 'Tipos Servico', Valor: selectedServiceTypes.length ? selectedServiceTypes.join(', ') : 'Todos' },
     ];
 
-    const categoriaRows = data.categoryData.map(row => ({ Categoria: row.name, Volume: row.quantidade, Valor: row.valor }));
+    const categoriaRows = data.categoryData.map(row => ({ Categoria: row.name, Volume: formatNumber(row.quantidade), Valor: formatCurrency(row.valor) }));
     const servicoRows = data.serviceTypeData.map(row => ({ Tipo: row.name, Volume: row.quantidade, Valor: row.valor }));
-    const atendimentoRows = data.atendTypeData.map(row => ({ Tipo: row.name, Volume: row.quantidade, Valor: row.valor }));
-    const subareaRows = data.topSubAreas.map(row => ({ Subarea: row.name, Volume: row.quantidade, Valor: row.valor }));
-    const subareaTop5Rows = data.tempoMedioSubArea.map(row => ({ Subarea: row.name, Volume: row.quantidade, Valor: row.valor }));
-    const backlogRows = data.backlogAgingData.map(row => ({ Faixa: row.name, Valor: row.value, Volume: row.quantidade }));
+    const atendimentoRows = data.atendTypeData.map(row => ({ Tipo: row.name, Volume: formatNumber(row.quantidade), Valor: formatCurrency(row.valor) }));
+    const subareaRows = data.topSubAreas.map(row => ({ Subarea: row.name, Volume: formatNumber(row.quantidade), Valor: formatCurrency(row.valor) }));
+    const subareaTop5Rows = data.tempoMedioSubArea.map(row => ({ Subarea: row.name, Volume: formatNumber(row.quantidade), Valor: formatCurrency(row.valor) }));
+    const backlogRows = data.backlogAgingData.map(row => ({ Faixa: row.name, Volume: formatNumber(row.quantidade), Valor: formatCurrency(row.value) }));
 
     const mensalRows = compareMode
       ? data.compareMonthlyData.map(row => ({ Periodo: row.name, Volume: row.value, Valor: row.valor }))
@@ -281,12 +281,12 @@ function App() {
     );
   };
 
-  const exportCategoria = () => { void exportSingle('Categoria', 'Producao por Categoria', data.categoryData.map(row => ({ Categoria: row.name, Volume: row.quantidade, Valor: row.valor }))); };
+  const exportCategoria = () => { void exportSingle('Categoria', 'Producao por Categoria', data.categoryData.map(row => ({ Categoria: row.name, Volume: formatNumber(row.quantidade), Valor: formatCurrency(row.valor) }))); };
   const exportTipoServico = () => { void exportSingle('Tipo_Servico', 'Tipo de Servico', data.serviceTypeData.map(row => ({ Tipo: row.name, Volume: row.quantidade, Valor: row.valor }))); };
-  const exportTipoAtendimento = () => { void exportSingle('Tipo_Atendimento', 'Tipo de Atendimento', data.atendTypeData.map(row => ({ Tipo: row.name, Volume: row.quantidade, Valor: row.valor }))); };
-  const exportSubareaTop10 = () => { void exportSingle('Subarea_Top10', 'Producao por Subarea (Top 10)', data.topSubAreas.map(row => ({ Subarea: row.name, Volume: row.quantidade, Valor: row.valor }))); };
-  const exportSubareaTop5 = () => { void exportSingle('Subarea_Top5', 'Producao por Subarea (Top 5)', data.tempoMedioSubArea.map(row => ({ Subarea: row.name, Volume: row.quantidade, Valor: row.valor }))); };
-  const exportBacklog = () => { void exportSingle('Backlog', 'Backlog por Faixa', data.backlogAgingData.map(row => ({ Faixa: row.name, Valor: row.value, Volume: row.quantidade }))); };
+  const exportTipoAtendimento = () => { void exportSingle('Tipo_Atendimento', 'Tipo de Atendimento', data.atendTypeData.map(row => ({ Tipo: row.name, Volume: formatNumber(row.quantidade), Valor: formatCurrency(row.valor) }))); };
+  const exportSubareaTop10 = () => { void exportSingle('Subarea_Top10', 'Producao por Subarea (Top 10)', data.topSubAreas.map(row => ({ Subarea: row.name, Volume: formatNumber(row.quantidade), Valor: formatCurrency(row.valor) }))); };
+  const exportSubareaTop5 = () => { void exportSingle('Subarea_Top5', 'Producao por Subarea (Top 5)', data.tempoMedioSubArea.map(row => ({ Subarea: row.name, Volume: formatNumber(row.quantidade), Valor: formatCurrency(row.valor) }))); };
+  const exportBacklog = () => { void exportSingle('Backlog', 'Backlog por Faixa', data.backlogAgingData.map(row => ({ Faixa: row.name, Volume: formatNumber(row.quantidade), Valor: formatCurrency(row.value) }))); };
   const exportRealizadoMes = () => { void exportSingle('Realizado_Mes', 'Realizado por Mes', compareMode
     ? data.compareMonthlyData.map(row => ({ Periodo: row.name, Volume: row.value, Valor: row.valor }))
     : data.monthlyRealizedData.map(row => ({ Periodo: row.name, Volume: row.value, Valor: row.valor }))

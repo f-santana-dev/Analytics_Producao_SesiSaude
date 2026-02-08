@@ -216,7 +216,7 @@ export function CategoryChart({ data, onBarClick }: CategoryChartProps) {
       <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
         <span className="w-1 h-3 bg-primary rounded-full"></span>
         POR CATEGORIA
-        <span className="tooltip text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip="Valores representam a quantidade de atendimentos por categoria.">i</span>
+        <span className="tooltip tooltip-right text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip="Valores representam a quantidade de atendimentos por categoria.">i</span>
       </h3>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
@@ -372,7 +372,7 @@ export function TopSubAreasChart({ data, onBarClick }: TopSubAreasChartProps) {
     <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col">
       <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
         <span className="w-1 h-3 bg-purple-500 rounded-full"></span>
-        PRODUÇÃO POR SUBÁREA (TOP 10)
+        PRODUÇÃO POR SUBÁREA
         <span className="tooltip text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip="Valores representam a quantidade de atendimentos por subárea.">i</span>
       </h3>
       <div className="flex-1 min-h-0">

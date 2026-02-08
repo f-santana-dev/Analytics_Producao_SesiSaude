@@ -54,3 +54,13 @@ body {
   opacity: 1;
   transform: translate(-50%, 0);
 }
+
+/* Tooltip opening to the right (for left-side icons) */
+.tooltip-right::after {
+  left: 0;
+  transform: translate(0, -4px);
+}
+
+.tooltip-right:hover::after {
+  transform: translate(0, 0);
+}

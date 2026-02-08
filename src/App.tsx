@@ -678,9 +678,14 @@ function App() {
       <div className="flex-1 ml-56 p-4 flex flex-col h-screen overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-center mb-3 shrink-0">
-          <div>
+          <div className="shrink-0 flex items-center gap-3 text-[#F39C45]">
+            <div className="p-2 bg-[#F39C45]/10 rounded-lg border border-[#F39C45]/20">
+              <img src="/favicon_page.svg" alt="" className="w-6 h-6" />
+            </div>
+            <div>
             <h1 className="text-2xl font-bold text-white leading-tight">Análise de Produção</h1>
             <p className="text-secondary text-xs">Visão Geral de Produção</p>
+          </div>
           </div>
           <div className="text-right">
              <div className="text-secondary text-[10px]">Dados atualizados em: {new Date().toLocaleDateString()}</div>
@@ -756,7 +761,7 @@ function App() {
         <div className="mb-2 text-[11px] text-secondary uppercase tracking-wide">Eficiência operacional</div>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 mb-4">
           <MiniKPI label="Tempo Médio até Realização" value={`${Math.round(data.tempoMedioRealizacaoDias || 0).toLocaleString('pt-BR')} dias`} trend={data.trendTempoMedioRealizacao} tooltip="Média de dias entre confirmação e realização." />
-          <MiniKPI label="Backlog (Valor)" value={formatCurrency(data.backlogTotalValor)} tooltip="Valor dos confirmados que ainda não foram realizados." />
+          <MiniKPI label="Receita Flutuante" value={formatCurrency(data.backlogTotalValor)} tooltip="Valor dos confirmados que ainda não foram realizados." />
         </div>
 
         {/* Charts Container - Flex Column to fill remaining space */}

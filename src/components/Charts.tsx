@@ -32,6 +32,7 @@ const StandardTooltip = ({
         <div className="flex flex-col gap-0.5">
           <p>Valor: <span className="font-mono font-bold">{valueFormatter(value)}</span></p>
           <p>Porcentagem: <span className="font-mono font-bold">{percentage}%</span></p>
+          <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
           {showTotal && (
             <>
               <hr className="border-border my-1" />
@@ -103,15 +104,15 @@ export function MonthlyRealizedChart({ data }: MonthlyRealizedChartProps) {
   });
 
   return (
-    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col">
+    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
       <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
         <span className="w-1 h-3 bg-primary rounded-full"></span>
-        REALIZADO POR MÊS (Com Tendência)
+        REALIZADO POR MÊS
         <span className="tooltip text-[10px] text-secondary border border-border rounded-full w-4 h-4 inline-flex items-center justify-center" data-tooltip="Valores representam a quantidade de atendimentos realizados por mês.">i</span>
       </h3>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData}>
+            <ComposedChart data={chartData} margin={{ top: 14, right: 10, left: 10, bottom: 0 }}>
                 <XAxis 
                     dataKey="name" 
                     tick={{ fill: '#a0a0a0', fontSize: 10 }} 
@@ -160,7 +161,7 @@ interface DailyRealizedChartProps {
 
 export function DailyRealizedChart({ data }: DailyRealizedChartProps) {
   return (
-    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col">
+    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
       <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
         <span className="w-1 h-3 bg-primary rounded-full"></span>
         REALIZADO POR DIA
@@ -168,7 +169,7 @@ export function DailyRealizedChart({ data }: DailyRealizedChartProps) {
       </h3>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
+            <BarChart data={data} margin={{ top: 14, right: 10, left: 10, bottom: 0 }}>
             <XAxis 
                 dataKey="day" 
                 tick={{ fill: '#a0a0a0', fontSize: 10 }} 
@@ -198,7 +199,7 @@ interface CategoryChartProps {
 
 export function CategoryChart({ data, onBarClick }: CategoryChartProps) {
   return (
-    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col">
+    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
       <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
         <span className="w-1 h-3 bg-primary rounded-full"></span>
         POR CATEGORIA
@@ -235,6 +236,7 @@ export function CategoryChart({ data, onBarClick }: CategoryChartProps) {
                     <div className="flex flex-col gap-0.5">
                       <p>Valor: <span className="font-mono font-bold">{formatCurrencyBR(valor)}</span></p>
                       <p>Porcentagem: <span className="font-mono font-bold">{percentage}%</span></p>
+          <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
                     </div>
                   </div>
                 );
@@ -270,7 +272,7 @@ interface TypeBarChartProps {
 export function TypeBarChart({ title, data, colors, onBarClick, tooltipText }: TypeBarChartProps) {
   const totalVolume = data.reduce((acc, cur) => acc + (cur.quantidade || 0), 0);
   return (
-    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col">
+    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
       <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
         <span className="w-1 h-3 bg-orange-500 rounded-full"></span>
         {title}
@@ -302,6 +304,7 @@ export function TypeBarChart({ title, data, colors, onBarClick, tooltipText }: T
                     <div className="flex flex-col gap-0.5">
                       <p>Valor: <span className="font-mono font-bold">{formatCurrencyBR(valor)}</span></p>
                       <p>Porcentagem: <span className="font-mono font-bold">{percentage}%</span></p>
+          <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
                     </div>
                   </div>
                 );
@@ -338,7 +341,7 @@ interface TopSubAreasChartProps {
 export function TopSubAreasChart({ data, onBarClick }: TopSubAreasChartProps) {
   const totalVolume = data.reduce((acc, cur) => acc + (cur.quantidade || 0), 0);
   return (
-    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col">
+    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
       <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
         <span className="w-1 h-3 bg-purple-500 rounded-full"></span>
         PRODUÇÃO POR SUBÁREA
@@ -374,6 +377,7 @@ export function TopSubAreasChart({ data, onBarClick }: TopSubAreasChartProps) {
                     <div className="flex flex-col gap-0.5">
                       <p>Valor: <span className="font-mono font-bold">{formatCurrencyBR(valor)}</span></p>
                       <p>Porcentagem: <span className="font-mono font-bold">{percentage}%</span></p>
+          <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
                     </div>
                   </div>
                 );
@@ -405,7 +409,7 @@ interface BacklogAgingChartProps {
 export function BacklogAgingChart({ data }: BacklogAgingChartProps) {
   const totalQuantidade = data.reduce((acc, cur) => acc + (cur.quantidade || 0), 0);
   return (
-    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col">
+    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
       <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
         <span className="w-1 h-3 bg-emerald-500 rounded-full"></span>
         BACKLOG POR FAIXA (VALOR)
@@ -434,6 +438,7 @@ export function BacklogAgingChart({ data }: BacklogAgingChartProps) {
                     <div className="flex flex-col gap-0.5">
                       <p>Volume: <span className="font-mono font-bold">{quantidade.toLocaleString('pt-BR')}</span></p>
                       <p>Porcentagem: <span className="font-mono font-bold">{percentage}%</span></p>
+          <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
                     </div>
                   </div>
                 );
@@ -469,7 +474,7 @@ interface AvgLeadTimeSubAreaChartProps {
 export function AvgLeadTimeSubAreaChart({ data }: AvgLeadTimeSubAreaChartProps) {
   const totalVolume = data.reduce((acc, cur) => acc + (cur.quantidade || 0), 0);
   return (
-    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col">
+    <div className="bg-card border border-border rounded-lg p-2 h-full flex flex-col shadow-xl shadow-black/20 fade-slide">
       <h3 className="text-white text-xs font-bold mb-1 flex items-center gap-2">
         <span className="w-1 h-3 bg-yellow-500 rounded-full"></span>
         PRODUÇÃO POR SUBÁREA
@@ -505,6 +510,7 @@ export function AvgLeadTimeSubAreaChart({ data }: AvgLeadTimeSubAreaChartProps) 
                     <div className="flex flex-col gap-0.5">
                       <p>Valor: <span className="font-mono font-bold">{formatCurrencyBR(valor)}</span></p>
                       <p>Porcentagem: <span className="font-mono font-bold">{percentage}%</span></p>
+          <p className="text-[10px] text-gray-400">Isso representa {percentage}% do total.</p>
                     </div>
                   </div>
                 );

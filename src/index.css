@@ -64,3 +64,19 @@ body {
 .tooltip-right:hover::after {
   transform: translate(0, 0);
 }
+
+/* Subtle entry animation */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-slide {
+  animation: fadeSlideUp 420ms ease-out;
+}

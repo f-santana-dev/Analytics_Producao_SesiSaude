@@ -10,7 +10,7 @@ interface KPICardProps {
 
 export function KPICard({ label, value, trend, className, loading }: KPICardProps) {
   return (
-    <div className={clsx("bg-card border border-border rounded-lg p-2 shadow-lg relative overflow-hidden flex flex-col justify-between", className)}>
+    <div className={clsx("bg-card border border-border rounded-lg p-2 shadow-xl shadow-black/20 fade-slide relative overflow-hidden flex flex-col justify-between", className)}>
       <h3 className="text-secondary text-[11px] font-medium uppercase mb-1">{label}</h3>
       
       {loading ? (

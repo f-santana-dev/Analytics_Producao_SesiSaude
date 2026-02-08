@@ -110,8 +110,21 @@ function App() {
       return `${(val || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
   };
 
-  const MiniKPI = ({ label, value, trend, tooltip }: { label: string; value: string; trend?: number | null; tooltip?: string }) => (
-    <div className="bg-card border border-border rounded-md px-2.5 py-2 flex items-center justify-between gap-2 tooltip" data-tooltip={tooltip || ''}>
+  const getHealth = () => {
+    const taxa = data.taxaRealizacaoVolume || 0;
+    const backlog = data.backlogTotalQuantidade || 0;
+    if (taxa >= 90 && backlog < 2000) return { label: 'Saudável', color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' };
+    if (taxa >= 75 && backlog < 5000) return { label: 'Atenção', color: 'bg-amber-500/15 text-amber-400 border-amber-500/30' };
+    return { label: 'Risco', color: 'bg-rose-500/15 text-rose-400 border-rose-500/30' };
+  };
+
+  const health = getHealth();
+
+  const MiniKPI = ({ label, value, trend, tooltip }: { label: string; value: string; trend?: number | null; tooltip?: string }) => {
+    const showAlert = trend !== undefined && trend !== null && Math.abs(trend) >= 25;
+    const alertSymbol = trend !== undefined && trend !== null && trend < 0 ? '▼' : '▲';
+    return (
+      <div className="bg-card border border-border rounded-md px-2.5 py-2 flex items-center justify-between gap-2 tooltip shadow-lg shadow-black/20 fade-slide" data-tooltip={tooltip || ''}>
       <div className="flex flex-col min-w-0">
         <span className="text-[10px] text-secondary uppercase leading-none mb-1 truncate">{label}</span>
         <span className="text-sm font-bold text-white leading-none truncate">{value}</span>
@@ -121,8 +134,13 @@ function App() {
           {trend >= 0 ? '▲' : '▼'} {Math.abs(trend).toFixed(1)}%
         </span>
       )}
+      {showAlert && (
+        <span className={`text-[9px] font-bold px-1 rounded ${trend !== undefined && trend < 0 ? 'text-rose-400 bg-rose-400/10' : 'text-amber-400 bg-amber-400/10'}`}>
+          {alertSymbol}!
+        </span>
+      )}
     </div>
-  );
+  )};
 
   const sqlEscape = (val: string) => val.replace(/'/g, "''");
 
@@ -694,6 +712,14 @@ function App() {
              </div>
           </div>
         </div>
+        <div className="mb-3">
+          <span
+            className={`inline-flex items-center gap-2 text-[10px] font-bold px-2.5 py-1 rounded-full border tooltip tooltip-right ${health.color}`}
+            data-tooltip="Risco baseado na relação Confirmados x Realizados. Taxa baixa indica poucas realizações."
+          >
+            {health.label}
+          </span>
+        </div>
 
         {/* Active Filters Badges */}
         {(selectedYears.length > 0 || selectedMonth || selectedUnits.length > 0 || selectedSubUnits.length > 0 || selectedSpecialties.length > 0 || selectedCategories.length > 0 || selectedAtendTypes.length > 0 || selectedServiceTypes.length > 0) && (
@@ -800,12 +826,12 @@ function App() {
             </div>
 
             {/* Charts Row 3 - Monthly Realized (Swapped Position) */}
-            <div className="grid grid-cols-1 gap-3 flex-[0.6] min-h-0">
+            <div className="grid grid-cols-1 gap-3 flex-[0.9] min-h-0">
                 <MonthlyRealizedChart data={data.monthlyRealizedData} />
             </div>
 
             {/* Charts Row 4 - Daily Realized (Swapped Position) */}
-            <div className="grid grid-cols-1 gap-3 flex-[0.6] min-h-0">
+            <div className="grid grid-cols-1 gap-3 flex-[0.9] min-h-0">
                 <DailyRealizedChart data={data.dailyRealizedData} />
             </div>
         </div>
